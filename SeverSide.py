@@ -60,26 +60,46 @@ def open_udp_server(ip_address):
             except Exception as e:
                 print(e)
 def handle_udp_requests(message, client_address):
-    format_string = '!I B Q'
+    format_string = '!I B Q '
     try:
-        # unpack the received message
-        received_magic_cookie, received_message_type, received_file_size = struct.unpack(format_string, message)
-        #validate the unpacked values
-        if received_magic_cookie != MAGIC_COOKIE or received_message_type != 0x3:
-            return
-        # process the valid request
-
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_socket:
+            # unpack the received message
+            received_magic_cookie, received_message_type, received_file_size = struct.unpack(format_string, message)
+            #validate the unpacked values
+            if received_magic_cookie != MAGIC_COOKIE or received_message_type != 0x3:
+                return
+            # process the valid request
+            payload_array=build_payload_message(UDP_PAYLOAD_SIZE, received_file_size)
+            for pay in payload_array:
+                udp_socket.sendto(pay, client_address)
+            udp_socket.close()
     #add further processing here (e.g., sending a response back to the client)
     except struct.error as e:
         print(e)
 
-
 def handle_tcp_requests(socket, client_address):
+    format_string = '!I B Q '
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as tcp_socket:
+            # unpack the received message
+            received_magic_cookie, received_message_type, received_file_size = struct.unpack(format_string, socket)
 
-def build_payload_message(payload_size,file_size,):
-    segments_number=(file_size+payload_size-1)//payload_size
+def build_payload_message(payload_size,file_size):
+    segments_number = (file_size + payload_size - 1) // payload_size
+    payload_array=[]
     for seg in range(segments_number):
-
+        start_pointer_byte = seg*payload_size
+        current_payload_size=min(payload_size, file_size - start_pointer_byte)
+        payload = b'\x00' * current_payload_size
+        payload_packed_message=struct.pack(
+        "!I B Q Q",  # Header format: Magic Cookie, Message Type, Total Segments, Current Segment
+            MAGIC_COOKIE,
+            MESSAGE_TYPE,
+            segments_number,
+            seg + 1  # Segment number starts from 1
+        ) + payload
+        payload_array.append(payload_packed_message)
+    return payload_array
 
 
 udp_socket = socket(AF_INET, SOCK_DGRAM)
