@@ -12,6 +12,7 @@ UDP_PORT=8080
 TCP_PORT=8081
 MAXIMUM_CLIENTS_NUMBER=10
 UDP_PAYLOAD_SIZE=1024
+TCP_PAYLOAD_SIZE=1024
 
 def build_offer_message_s2c(udp_port, tcp_port):
     # pack the message into bytes
@@ -77,12 +78,19 @@ def handle_udp_requests(message, client_address):
     except struct.error as e:
         print(e)
 
-def handle_tcp_requests(socket, client_address):
+def handle_tcp_requests(client_socket, client_address):
     format_string = '!I B Q '
     try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as tcp_socket:
-            # unpack the received message
-            received_magic_cookie, received_message_type, received_file_size = struct.unpack(format_string, socket)
+        message = client_socket.recv(1024)
+        received_magic_cookie, received_message_type, received_file_size = struct.unpack(format_string, client_socket)
+        if received_magic_cookie != MAGIC_COOKIE or received_message_type != 0x3:
+            return
+        payload_array = build_payload_message(TCP_PAYLOAD_SIZE, received_file_size)
+        for pay in payload_array:
+            client_socket.sendto(pay, client_address)
+        client_socket.close()
+    except Exception as e:
+        print(e)
 
 def build_payload_message(payload_size,file_size):
     segments_number = (file_size + payload_size - 1) // payload_size
