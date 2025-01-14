@@ -91,6 +91,7 @@ def handle_tcp_requests(client_socket, client_address):
         print(e)
 
 def build_payload_message(payload_size,file_size):
+    file_size = int(file_size)
     segments_number = (file_size + payload_size - 1) // payload_size
     payload_array=[]
     for seg in range(segments_number):
