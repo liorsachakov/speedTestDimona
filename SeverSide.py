@@ -7,20 +7,22 @@ import time
 
 
 MAGIC_COOKIE=0xabcddcba
-MESSAGE_TYPE=0x2
+OFFER_MESSAGE_TYPE=0x2
 BROADCAST_PORT=8082
 UDP_PORT= 8080
 TCP_PORT= 8081
 MAXIMUM_CLIENTS_NUMBER=10
 UDP_PAYLOAD_SIZE= 1024
 TCP_PAYLOAD_SIZE= 1024
+REQUEST_MESSAGE_TYPE = 0x3
+PAYLOAD_MESSAGE_TYPE = 0x4
 
 def build_offer_message_s2c(udp_port, tcp_port):
     # pack the message into bytes
     message = struct.pack(
         "!I B H H",
         MAGIC_COOKIE,
-        MESSAGE_TYPE,
+        OFFER_MESSAGE_TYPE,
         udp_port,
         tcp_port
     )
@@ -72,11 +74,11 @@ def handle_udp_requests(message, client_address):
             # unpack the received message
             received_magic_cookie, received_message_type, received_file_size = struct.unpack(format_string, message)
             #validate the unpacked values
-            if received_magic_cookie != MAGIC_COOKIE or received_message_type != 0x3:
+            if received_magic_cookie != MAGIC_COOKIE or received_message_type != REQUEST_MESSAGE_TYPE:
                 print("Invalid message header")
                 return
             # process the valid request
-            payload_array=build_payload_message(UDP_PAYLOAD_SIZE, received_file_size)
+            payload_array= build_payload_message(UDP_PAYLOAD_SIZE, received_file_size)
             for pay in payload_array:
                 udp_socket.sendto(pay, client_address)
     #add further processing here (e.g., sending a response back to the client)
@@ -88,18 +90,25 @@ def handle_tcp_requests(client_socket, client_address):
     try:
         message = client_socket.recv(1024)
         received_magic_cookie, received_message_type, received_file_size = struct.unpack(format_string, message)
-        if received_magic_cookie != MAGIC_COOKIE or received_message_type != 0x3:
+        if received_magic_cookie != MAGIC_COOKIE or received_message_type != REQUEST_MESSAGE_TYPE:
                 print("Invalid message header")
                 return
-        payload_array = build_payload_message(TCP_PAYLOAD_SIZE, received_file_size)
-        for pay in payload_array:
-            print("Send in TCP connection")
-            client_socket.sendto(pay, client_address)
-        client_socket.close()
+                # Prepare and send data in chunks
+        chunk_size = 4096
+        data_to_send = b'\x00' * received_file_size
+        bytes_sent = 0
+        print("Sending data...")
+        while bytes_sent < received_file_size:
+            end_index = min(bytes_sent + chunk_size, received_file_size)
+            client_socket.sendall(data_to_send[bytes_sent:end_index])
+            bytes_sent = end_index
+        print("Data send complete")
     except Exception as e:
-        print(e)
+        print(f"Server error: {e}")
+    finally:
+        client_socket.close()
 
-def build_payload_message(payload_size,file_size):
+def build_payload_message(payload_size, file_size):
     file_size = int(file_size)
     segments_number = (file_size + payload_size - 1) // payload_size
     payload_array=[]
@@ -110,7 +119,7 @@ def build_payload_message(payload_size,file_size):
         payload_packed_message=struct.pack(
         "!I B Q Q",  # Header format: Magic Cookie, Message Type, Total Segments, Current Segment
             MAGIC_COOKIE,
-            MESSAGE_TYPE,
+            PAYLOAD_MESSAGE_TYPE,
             segments_number,
             seg + 1  # Segment number starts from 1
         ) + payload

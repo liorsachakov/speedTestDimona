@@ -1,5 +1,5 @@
 from datetime import time
-
+import time  # Ensure the time module is used for timing
 import threading
 from tqdm import tqdm
 import socket
@@ -82,32 +82,27 @@ def SpeedTest(file_size, tcp_connections, udp_connections, udp_port, tcp_port, s
     print(f"{ac.GREEN}Speed test initiated. Monitor the results above.{ac.RESET}")
 
 
-
-
-
-def TCP_download(file_size, tcp_port,server_address):
+def TCP_download(file_size, tcp_port, server_address):
     message = build_request_message(file_size)
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as tcp_client_socket:
-        tcp_client_socket.settimeout(TCP_TIMEOUT)  # Set the timeout for the TCP connection
+        tcp_client_socket.settimeout(TCP_TIMEOUT)  # Set connection timeout
         try:
-            print ("before the connection")
-            tcp_client_socket.connect((server_address, tcp_port))  # Connect to the server
-            print("after the connection")
-
-            tcp_client_socket.send(message)
-            total_received_bytes = 0
-            while total_received_bytes < file_size:
-                response = tcp_client_socket.recv(TCP_PAYLOAD_SIZE + PAYLOAD_HEADER_SIZE)
-                parsed_message = parse_payload_message(response)
-                if parsed_message is None:
-                    continue
-                current_total_segments, current_segment, payload_data = parsed_message
-                total_received_bytes += len(payload_data)
-
-                print(f"Received {total_received_bytes}/{file_size} bytes")
-
-            print(f"Download completed. Total bytes received: {total_received_bytes}")
-
+            print("Connecting to server...")
+            tcp_client_socket.connect((server_address, tcp_port))
+            print("Connected to server. Starting download...")
+            # Send the initial request message
+            start_time = time.time()
+            tcp_client_socket.sendall(message)
+            # Receive data in chunks
+            received_data = bytearray()
+            while len(received_data) < file_size:
+                chunk = tcp_client_socket.recv(4096)
+                if not chunk:
+                    break
+                received_data.extend(chunk)
+            end_time = time.time()
+            print(f"Download completed. Data size: {len(received_data)} bytes, Time take {end_time-start_time}")
         except socket.timeout:
             print("Timeout occurred while waiting for the server response.")
         except Exception as e:
@@ -126,7 +121,9 @@ def UDP_speedtest(file_size, udp_port, server_address):
             with tqdm(total=file_size, unit='B', unit_scale=True, desc="Downloading") as pbar:
                 while True:
                     # Receive the segment from the server
-                    response, _ = udp_client_socket.recvfrom(UDP_PAYLOAD_SIZE + PAYLOAD_HEADER_SIZE)
+                    print("  before the recv to in udp")
+                    response, _ = udp_client_socket.recv(UDP_PAYLOAD_SIZE + PAYLOAD_HEADER_SIZE)
+                    print("after the recv to in udp")
                     parsed_message = parse_payload_message(response)
                     if parsed_message is None:
                         continue
@@ -166,11 +163,14 @@ def build_request_message(file_size):
 
 def parse_payload_message(message):
     try:
+
         magic_cookie, message_type, total_segments, current_segment = struct.unpack(PAYLOAD_FORMAT, message[:PAYLOAD_HEADER_SIZE])
         payload_data = message[PAYLOAD_HEADER_SIZE:]
+        print("before parse if")
         if magic_cookie != MAGIC_COOKIE or message_type != 0x4:
             print("Invalid message header")
             return None
+        print("after parse if")
         return total_segments, current_segment, payload_data
 
     except struct.error as e:
