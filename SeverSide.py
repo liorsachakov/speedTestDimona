@@ -93,6 +93,7 @@ def handle_tcp_requests(client_socket, client_address):
                 return
         payload_array = build_payload_message(TCP_PAYLOAD_SIZE, received_file_size)
         for pay in payload_array:
+            print("Send in TCP connection")
             client_socket.sendto(pay, client_address)
         client_socket.close()
     except Exception as e:
