@@ -59,26 +59,22 @@ def server_lookup():
                 try:
                     magic_cookie_rcv, message_type_rcv, udp_port, tcp_port = struct.unpack("!I B H H", message)
                     if magic_cookie_rcv == MAGIC_COOKIE or message_type_rcv == MESSAGE_TYPE:
-                        return  udp_port, tcp_port,server_address
+                        print("Received offer")
+                        return udp_port, tcp_port,server_address
                 except struct.error as e:
                     print(f"{ac.RED}Invalid offer message.{ac.RESET}")
     except Exception as e:
         print(f"{ac.RED}Error occurred.{ac.RESET}")
 
 def SpeedTest(file_size, tcp_connections, udp_connections, udp_port, tcp_port, server_address):
-
-    print(f"{ac.GREEN}Starting speed test...{ac.RESET}")
     if tcp_connections > 0:
-        print(f"{ac.CYAN}Testing TCP Download...{ac.RESET}")
+        print(f"{ac.CYAN}Testing TCP Download...{ac.RESET}\n")
         for i in range(tcp_connections):
-            print(f"{ac.YELLOW}Starting TCP connection {i+1}...{ac.RESET}")
             threading.Thread(target=TCP_download, args=(file_size, tcp_port, server_address[0])).start()
     if udp_connections > 0:
-        print(f"{ac.CYAN}Testing UDP Download...{ac.RESET}")
+        print(f"{ac.CYAN}Testing UDP Download...{ac.RESET}\n")
         for i in range(udp_connections):
-            print(f"{ac.YELLOW}Starting UDP connection {i+1}...{ac.RESET}")
             threading.Thread(target=UDP_speedtest, args=(file_size, udp_port, server_address[0])).start()
-
     print(f"{ac.GREEN}Speed test initiated. Monitor the results above.{ac.RESET}")
 
 
@@ -172,16 +168,16 @@ def parse_payload_message(message):
 
 def main():
     # Step 1: Get user input for the file size and number of connections
-    file_size, tcp_connections, udp_connections = startup()
+        file_size, tcp_connections, udp_connections = startup()
 
-    # Step 2: Discover server using broadcast
-    udp_port, tcp_port, server_address = server_lookup()
+        # Step 2: Discover server using broadcast
+        udp_port, tcp_port, server_address = server_lookup()
 
-    print(f"{ac.GREEN}Server found!{ac.RESET}")
-    print(f"UDP Port: {udp_port}, TCP Port: {tcp_port}, Server Address: {server_address[0]}")
+        print(f"{ac.GREEN}Server found!{ac.RESET}")
+        print(f"UDP Port: {udp_port}, TCP Port: {tcp_port}, Server Address: {server_address[0]}")
 
-    # Step 3: Start speed test
-    SpeedTest(file_size, tcp_connections, udp_connections, udp_port, tcp_port, server_address)
+        # Step 3: Start speed test
+        SpeedTest(file_size, tcp_connections, udp_connections, udp_port, tcp_port, server_address)
 
 
 if __name__ == "__main__":

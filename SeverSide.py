@@ -44,16 +44,12 @@ def broadcast_message_s2c():
         time.sleep(1)
 
 def open_tcp_server(ip_address):
-    print ("enter to open tcp server")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         server_socket.bind(("", TCP_PORT))
         server_socket.listen(1)
-        print("enter to open tcp server")
         while True:
             try:
-                print("asaf ve lior is the becks")
                 client_socket, client_address = server_socket.accept()
-                print("asaf ve lior is the becksasdadadada")
                 threading.Thread(target=handle_tcp_requests,args=(client_socket, client_address)).start()
             except Exception as e:
                 print(e)
@@ -131,7 +127,7 @@ def main():
     """Main entry point to start TCP and UDP servers."""
     ip_address = '0.0.0.0'  # Example IP address, replace as needed
 
-    # Start UDP and TCP servers in separate threads
+    print("Server started, listening on IP address " + ip_address)
     threading.Thread(target= open_tcp_server, args= (ip_address,)).start()
     threading.Thread(target= open_udp_server, args= (ip_address,)).start()
 
