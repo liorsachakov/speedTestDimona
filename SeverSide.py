@@ -1,5 +1,6 @@
 import struct
-from socket import *
+
+import socket
 
 import threading
 import time

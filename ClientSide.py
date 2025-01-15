@@ -1,6 +1,5 @@
 from datetime import time
-from socket import *
-from struct import *
+
 import threading
 from tqdm import tqdm
 import socket
@@ -66,8 +65,26 @@ def server_lookup():
     except Exception as e:
         print(f"{ac.RED}Error occurred.{ac.RESET}")
 
-def SpeedTest(file_size, tcp_connections, udp_connections,udp_port, tcp_port,server_address):
-    print()
+def SpeedTest(file_size, tcp_connections, udp_connections, udp_port, tcp_port, server_address):
+
+    print(f"{ac.GREEN}Starting speed test...{ac.RESET}")
+
+    # perform TCP download if there are TCP connections specified
+    if tcp_connections > 0:
+        print(f"{ac.CYAN}Testing TCP Download...{ac.RESET}")
+        for i in range(tcp_connections):
+            print(f"{ac.YELLOW}Starting TCP connection {i+1}...{ac.RESET}")
+            threading.Thread(target=TCP_download, args=(file_size, tcp_port, server_address[0])).start()
+
+    # perform UDP speed test if there are UDP connections specified
+    if udp_connections > 0:
+        print(f"{ac.CYAN}Testing UDP Download...{ac.RESET}")
+        for i in range(udp_connections):
+            print(f"{ac.YELLOW}Starting UDP connection {i+1}...{ac.RESET}")
+            threading.Thread(target=UDP_speedtest, args=(file_size, udp_port, server_address[0])).start()
+
+    print(f"{ac.GREEN}Speed test initiated. Monitor the results above.{ac.RESET}")
+
 
 
 
@@ -160,3 +177,21 @@ def parse_payload_message(message):
 
     except struct.error as e:
         print(f"Error unpacking payload message: {e}")
+
+
+def main():
+    # Step 1: Get user input for the file size and number of connections
+    file_size, tcp_connections, udp_connections = startup()
+
+    # Step 2: Discover server using broadcast
+    udp_port, tcp_port, server_address = server_lookup()
+
+    print(f"{ac.GREEN}Server found!{ac.RESET}")
+    print(f"UDP Port: {udp_port}, TCP Port: {tcp_port}, Server Address: {server_address[0]}")
+
+    # Step 3: Start speed test
+    SpeedTest(file_size, tcp_connections, udp_connections, udp_port, tcp_port, server_address)
+
+
+if __name__ == "__main__":
+    main()
