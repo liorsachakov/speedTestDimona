@@ -39,6 +39,7 @@ def broadcast_message_s2c():
         except Exception as e:
             print(e)
         time.sleep(1)
+
 def open_tcp_server(ip_address):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         server_socket.bind((ip_address, TCP_PORT))
@@ -67,6 +68,7 @@ def handle_udp_requests(message, client_address):
             received_magic_cookie, received_message_type, received_file_size = struct.unpack(format_string, message)
             #validate the unpacked values
             if received_magic_cookie != MAGIC_COOKIE or received_message_type != 0x3:
+                print("Invalid message header")
                 return
             # process the valid request
             payload_array=build_payload_message(UDP_PAYLOAD_SIZE, received_file_size)
@@ -82,6 +84,7 @@ def handle_tcp_requests(client_socket, client_address):
         message = client_socket.recv(1024)
         received_magic_cookie, received_message_type, received_file_size = struct.unpack(format_string, message)
         if received_magic_cookie != MAGIC_COOKIE or received_message_type != 0x3:
+            print("Invalid message header")
             return
         payload_array = build_payload_message(TCP_PAYLOAD_SIZE, received_file_size)
         for pay in payload_array:
