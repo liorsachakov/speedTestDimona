@@ -11,7 +11,7 @@ UDP_TIMEOUT = 10
 TCP_TIMEOUT = 10
 BROADCAST_PORT = 8082
 MAGIC_COOKIE=0xabcddcba
-MESSAGE_TYPE=0x2
+MESSAGE_TYPE=0x3
 PAYLOAD_FORMAT = "!I B Q Q"
 PAYLOAD_HEADER_SIZE = 21
 
@@ -171,7 +171,7 @@ def parse_payload_message(message):
     try:
         magic_cookie, message_type, total_segments, current_segment = struct.unpack(PAYLOAD_FORMAT, message[:PAYLOAD_HEADER_SIZE])
         payload_data = message[PAYLOAD_HEADER_SIZE:]
-        if magic_cookie != MAGIC_COOKIE or message_type != MESSAGE_TYPE:
+        if magic_cookie != MAGIC_COOKIE or message_type != 0x4:
             print("Invalid message header")
             return None
         return total_segments, current_segment, payload_data
