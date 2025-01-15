@@ -63,7 +63,7 @@ def handle_tcp_requests(client_socket, client_address):
         message = client_socket.recv(1024).decode().strip()  # Decode and remove the newline
 
         if not message:
-            print("Invalid message, no file size received.")
+            print("Invalid message, no file size received." )
             return
         try:
             received_file_size = int(message)
