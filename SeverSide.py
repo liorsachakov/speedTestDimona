@@ -114,7 +114,7 @@ def build_payload_message(payload_size,file_size):
 
 def main():
     """Main entry point to start TCP and UDP servers."""
-    ip_address = '127.0.0.1'  # Example IP address, replace as needed
+    ip_address = '0.0.0.0'  # Example IP address, replace as needed
 
     # Start UDP and TCP servers in separate threads
     threading.Thread(target=open_tcp_server, args=(ip_address,)).start()

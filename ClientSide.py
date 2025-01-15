@@ -7,8 +7,8 @@ import struct
 import ANSI_colors as ac
 from SeverSide import UDP_PAYLOAD_SIZE, TCP_PAYLOAD_SIZE
 
-UDP_TIMEOUT = 1
-TCP_TIMEOUT = 1
+UDP_TIMEOUT = 10
+TCP_TIMEOUT = 10
 BROADCAST_PORT = 8082
 MAGIC_COOKIE=0xabcddcba
 MESSAGE_TYPE=0x2
@@ -94,8 +94,9 @@ def TCP_download(file_size, tcp_port,server_address):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as tcp_client_socket:
         tcp_client_socket.settimeout(TCP_TIMEOUT)  # Set the timeout for the TCP connection
         try:
+            print("before connecting")
             tcp_client_socket.connect((server_address, tcp_port))  # Connect to the server
-
+            print("after connecting")
             tcp_client_socket.send(message)
             total_received_bytes = 0
             while total_received_bytes < file_size:
