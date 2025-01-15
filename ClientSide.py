@@ -82,10 +82,13 @@ def TCP_download(file_size, tcp_port,server_address):
             tcp_client_socket.send(message)
             total_received_bytes = 0
             while total_received_bytes < file_size:
-                data = tcp_client_socket.recv(TCP_PAYLOAD_SIZE + PAYLOAD_HEADER_SIZE)  # Receive in chunks of 1024 bytes
-                if not data:
-                    break
-                total_received_bytes += len(data)
+                response = tcp_client_socket.recv(TCP_PAYLOAD_SIZE + PAYLOAD_HEADER_SIZE)
+                parsed_message = parse_payload_message(response)
+                if parsed_message is None:
+                    continue
+                current_total_segments, current_segment, payload_data = parsed_message
+                total_received_bytes += len(payload_data)
+
                 print(f"Received {total_received_bytes}/{file_size} bytes")
 
             print(f"Download completed. Total bytes received: {total_received_bytes}")
