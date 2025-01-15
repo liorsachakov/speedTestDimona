@@ -155,11 +155,9 @@ def parse_payload_message(message):
 
         magic_cookie, message_type, total_segments, current_segment = struct.unpack(PAYLOAD_FORMAT, message[:PAYLOAD_HEADER_SIZE])
         payload_data = message[PAYLOAD_HEADER_SIZE:]
-        print("before parse if")
         if magic_cookie != MAGIC_COOKIE or message_type != 0x4:
             print("Invalid message header")
             return None
-        print("after parse if")
         return total_segments, current_segment, payload_data
 
     except struct.error as e:
@@ -168,11 +166,10 @@ def parse_payload_message(message):
 
 def main():
     # Step 1: Get user input for the file size and number of connections
+    while True:
         file_size, tcp_connections, udp_connections = startup()
-
         # Step 2: Discover server using broadcast
         udp_port, tcp_port, server_address = server_lookup()
-
         print(f"{ac.GREEN}Server found!{ac.RESET}")
         print(f"UDP Port: {udp_port}, TCP Port: {tcp_port}, Server Address: {server_address[0]}")
 

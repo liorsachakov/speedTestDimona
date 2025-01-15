@@ -125,14 +125,22 @@ def handle_udp_requests(message, client_address):
 
 def main():
     """Main entry point to start TCP and UDP servers."""
-    ip_address = '0.0.0.0'  # Example IP address, replace as needed
+    ip_address = ""  # Example IP address, replace as needed
 
     print("Server started, listening on IP address " + ip_address)
-    threading.Thread(target= open_tcp_server, args= (ip_address,)).start()
-    threading.Thread(target= open_udp_server, args= (ip_address,)).start()
+    tcp_thread = threading.Thread(target=open_tcp_server, args=(ip_address,))
+    udp_thread = threading.Thread(target=open_udp_server, args=(ip_address,))
+    broadcast_thread = threading.Thread(target=broadcast_message_s2c)
 
-    # Start broadcasting messages
-    threading.Thread(target=broadcast_message_s2c).start()
+    tcp_thread.start()
+    udp_thread.start()
+    broadcast_thread.start()
+
+    # Join the threads to wait for their completion
+    tcp_thread.join()
+    udp_thread.join()
+    broadcast_thread.join()
+
 
 if __name__ == "__main__":
     main()
