@@ -8,10 +8,10 @@ import ANSI_colors as ac
 from SeverSide import UDP_PAYLOAD_SIZE, TCP_PAYLOAD_SIZE
 
 UDP_TIMEOUT = 1
-TCP_TIMEOUT = 1
+TCP_TIMEOUT = 10
 BROADCAST_PORT = 8082
 MAGIC_COOKIE=0xabcddcba
-MESSAGE_TYPE=0x2
+MESSAGE_TYPE=0x3
 PAYLOAD_FORMAT = "!I B Q Q"
 PAYLOAD_HEADER_SIZE = 21
 
@@ -68,15 +68,11 @@ def server_lookup():
 def SpeedTest(file_size, tcp_connections, udp_connections, udp_port, tcp_port, server_address):
 
     print(f"{ac.GREEN}Starting speed test...{ac.RESET}")
-
-    # perform TCP download if there are TCP connections specified
     if tcp_connections > 0:
         print(f"{ac.CYAN}Testing TCP Download...{ac.RESET}")
         for i in range(tcp_connections):
             print(f"{ac.YELLOW}Starting TCP connection {i+1}...{ac.RESET}")
             threading.Thread(target=TCP_download, args=(file_size, tcp_port, server_address[0])).start()
-
-    # perform UDP speed test if there are UDP connections specified
     if udp_connections > 0:
         print(f"{ac.CYAN}Testing UDP Download...{ac.RESET}")
         for i in range(udp_connections):
@@ -94,7 +90,9 @@ def TCP_download(file_size, tcp_port,server_address):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as tcp_client_socket:
         tcp_client_socket.settimeout(TCP_TIMEOUT)  # Set the timeout for the TCP connection
         try:
+            print ("before the connection")
             tcp_client_socket.connect((server_address, tcp_port))  # Connect to the server
+            print("after the connection")
 
             tcp_client_socket.send(message)
             total_received_bytes = 0
@@ -170,7 +168,7 @@ def parse_payload_message(message):
     try:
         magic_cookie, message_type, total_segments, current_segment = struct.unpack(PAYLOAD_FORMAT, message[:PAYLOAD_HEADER_SIZE])
         payload_data = message[PAYLOAD_HEADER_SIZE:]
-        if magic_cookie != MAGIC_COOKIE or message_type != MESSAGE_TYPE:
+        if magic_cookie != MAGIC_COOKIE or message_type != 0x4:
             print("Invalid message header")
             return None
         return total_segments, current_segment, payload_data
