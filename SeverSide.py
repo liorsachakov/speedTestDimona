@@ -4,7 +4,7 @@ import socket
 
 import threading
 import time
-
+from random import random
 
 MAGIC_COOKIE=0xabcddcba
 OFFER_MESSAGE_TYPE=0x2
@@ -58,6 +58,36 @@ def open_tcp_server(ip_address):
             except Exception as e:
                 print(e)
 
+def handle_tcp_requests(client_socket, client_address):
+    try:
+        message = client_socket.recv(1024).decode().strip()  # Decode and remove the newline
+
+        if not message:
+            print("Invalid message, no file size received.")
+            return
+        try:
+            received_file_size = int(message)
+            print(f"Received file size: {received_file_size}")
+        except ValueError:
+            print("Invalid file size received.")
+            return
+        chunk_size = 1000
+        bytes_sent = 0
+        print("Sending data...")
+        while bytes_sent < received_file_size:
+            remaining_data_size = received_file_size - bytes_sent
+            chunk = b'\x00' * min(chunk_size, remaining_data_size)  # Generate the next chunk
+            client_socket.sendall(chunk)
+            bytes_sent += len(chunk)  # Track the amount of data sent
+        print("Data sent successfully.")
+    except Exception as e:
+        print(f"Server error: {e}")
+    finally:
+        client_socket.close()
+
+
+
+
 def open_udp_server(ip_address):
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as UDP_socket:
         UDP_socket.bind((ip_address, UDP_PORT))
@@ -68,7 +98,7 @@ def open_udp_server(ip_address):
             except Exception as e:
                 print(e)
 def handle_udp_requests(message, client_address):
-    format_string = '!I B Q '
+    format_string = '!I B Q'
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_socket:
             # unpack the received message
@@ -78,53 +108,24 @@ def handle_udp_requests(message, client_address):
                 print("Invalid message header")
                 return
             # process the valid request
-            payload_array= build_payload_message(UDP_PAYLOAD_SIZE, received_file_size)
-            for pay in payload_array:
-                udp_socket.sendto(pay, client_address)
+            segment_size = UDP_PAYLOAD_SIZE - 21
+            total_segments = (received_file_size + segment_size - 1) // segment_size
+            bytes_sent = 0
+            for segment_num in range(total_segments):
+                remaining = received_file_size - bytes_sent
+                current_size = min(segment_size, remaining)
+                payload = b'\x00'* current_size
+                packet = struct.pack('!IbQQ', MAGIC_COOKIE, PAYLOAD_MESSAGE_TYPE, total_segments, segment_num) + payload
+                udp_socket.sendto(packet, client_address)
+                bytes_sent += current_size
     #add further processing here (e.g., sending a response back to the client)
     except struct.error as e:
         print(e)
 
-def handle_tcp_requests(client_socket, client_address):
-    format_string = '!I B Q '
-    try:
-        message = client_socket.recv(1024)
-        received_magic_cookie, received_message_type, received_file_size = struct.unpack(format_string, message)
-        if received_magic_cookie != MAGIC_COOKIE or received_message_type != REQUEST_MESSAGE_TYPE:
-                print("Invalid message header")
-                return
-                # Prepare and send data in chunks
-        chunk_size = 4096
-        data_to_send = b'\x00' * received_file_size
-        bytes_sent = 0
-        print("Sending data...")
-        while bytes_sent < received_file_size:
-            end_index = min(bytes_sent + chunk_size, received_file_size)
-            client_socket.sendall(data_to_send[bytes_sent:end_index])
-            bytes_sent = end_index
-        print("Data send complete")
-    except Exception as e:
-        print(f"Server error: {e}")
-    finally:
-        client_socket.close()
 
-def build_payload_message(payload_size, file_size):
-    file_size = int(file_size)
-    segments_number = (file_size + payload_size - 1) // payload_size
-    payload_array=[]
-    for seg in range(segments_number):
-        start_pointer_byte = seg*payload_size
-        current_payload_size=min(payload_size, file_size - start_pointer_byte)
-        payload = b'\x00' * current_payload_size
-        payload_packed_message=struct.pack(
-        "!I B Q Q",  # Header format: Magic Cookie, Message Type, Total Segments, Current Segment
-            MAGIC_COOKIE,
-            PAYLOAD_MESSAGE_TYPE,
-            segments_number,
-            seg + 1  # Segment number starts from 1
-        ) + payload
-        payload_array.append(payload_packed_message)
-    return payload_array
+
+
+
 
 def main():
     """Main entry point to start TCP and UDP servers."""

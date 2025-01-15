@@ -83,8 +83,6 @@ def SpeedTest(file_size, tcp_connections, udp_connections, udp_port, tcp_port, s
 
 
 def TCP_download(file_size, tcp_port, server_address):
-    message = build_request_message(file_size)
-
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as tcp_client_socket:
         tcp_client_socket.settimeout(TCP_TIMEOUT)  # Set connection timeout
         try:
@@ -92,12 +90,12 @@ def TCP_download(file_size, tcp_port, server_address):
             tcp_client_socket.connect((server_address, tcp_port))
             print("Connected to server. Starting download...")
             # Send the initial request message
+            tcp_client_socket.send(f"{file_size}\n".encode())# send the data needed followed \n
             start_time = time.time()
-            tcp_client_socket.sendall(message)
             # Receive data in chunks
             received_data = bytearray()
             while len(received_data) < file_size:
-                chunk = tcp_client_socket.recv(4096)
+                chunk = tcp_client_socket.recv(min(4096, file_size - len(received_data)))
                 if not chunk:
                     break
                 received_data.extend(chunk)
@@ -118,39 +116,34 @@ def UDP_speedtest(file_size, udp_port, server_address):
         received_segments = {}
         total_segments = None
         try:
-            with tqdm(total=file_size, unit='B', unit_scale=True, desc="Downloading") as pbar:
-                while True:
-                    # Receive the segment from the server
-                    print("  before the recv to in udp")
-                    response, _ = udp_client_socket.recv(UDP_PAYLOAD_SIZE + PAYLOAD_HEADER_SIZE)
-                    print("after the recv to in udp")
-                    parsed_message = parse_payload_message(response)
-                    if parsed_message is None:
-                        continue
-                    current_total_segments, current_segment, payload_data = parsed_message
-                    # Set the total segments on first valid message
-                    if total_segments is None:
-                        total_segments = current_total_segments
-                    # Store unique segments
-                    if current_segment not in received_segments:
-                        received_segments[current_segment] = payload_data  # Store the payload
-                    # Update progress bar for each segment
-                    pbar.update(len(payload_data))
-                    # Stop if all segments are received
-                    if len(received_segments) == total_segments:
-                        break
-            end_time = time.time()
-            elapsed_time = end_time - start_time
-            total_received_bytes = sum(len(segment) for segment in received_segments.values())
-            speed = total_received_bytes / elapsed_time
-            print(f"Total Segments Received: {len(received_segments)}/{total_segments}")
-            print(f"Elapsed Time: {elapsed_time:.2f} seconds")
-            print(f"Transfer Speed: {speed / 1024:.2f} KB/s")
+            while True:
+                response = udp_client_socket.recv(UDP_PAYLOAD_SIZE)
+                parsed_message = parse_payload_message(response)
+                if parsed_message is None:
+                    continue
+                current_total_segments, current_segment, payload_data = parsed_message
+                # Set total segments if this is the first valid message
+                if total_segments is None:
+                    total_segments = current_total_segments
+                # Store unique segments
+                if current_segment not in received_segments:
+                    received_segments[current_segment] = payload_data
+                    print(f"Received Segment {current_segment}/{total_segments}")
+                # Stop if all segments are received
+                if len(received_segments) == total_segments:
+                    break
         except socket.timeout:
             print("No response received within the timeout period.")
         except Exception as e:
-            print(f"Error during speed test: {e}")
-
+            print(f"Error during UDP reception: {e}")
+        # Calculate transfer metrics after successful reception
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        total_received_bytes = sum(len(segment) for segment in received_segments.values())
+        speed = total_received_bytes / elapsed_time
+        print(f"Total Segments Received: {len(received_segments)}/{total_segments}")
+        print(f"Elapsed Time: {elapsed_time:.2f} seconds")
+        print(f"Transfer Speed: {speed / 1024:.2f} KB/s")
 
 def build_request_message(file_size):
     message = struct.pack(
